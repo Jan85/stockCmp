@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Price History Plotter</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1rem;
+        }
+
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stock-input-section {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-group label {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        input[type="text"],
+        input[type="date"] {
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="date"]:focus {
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
+        }
+
+        input[type="text"] {
+            width: 120px;
+            text-transform: uppercase;
+        }
+
+        input[type="date"] {
+            width: 160px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #fff;
+        }
+
+        .btn-primary:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #c0392b);
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .date-range {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .date-range span {
+            color: #888;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .selected-stocks {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .stock-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-weight: 600;
+            font-size: 14px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .stock-chip button {
+            background: none;
+            border: none;
+            color: inherit;
+            padding: 0;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .stock-chip button:hover {
+            opacity: 1;
+            transform: none;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 500px;
+        }
+
+        .options-row {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            z-index: 10;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 212, 255, 0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .validation-feedback {
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        .validation-feedback.valid {
+            color: #2ecc71;
+        }
+
+        .validation-feedback.invalid {
+            color: #ff6b6b;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-right: 16px;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+
+        .stats-panel.show {
+            display: block;
+        }
+
+        .stats-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #00d4ff;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .stats-table th {
+            text-align: left;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #888;
+            font-weight: 500;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats-table th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        .stats-table th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        .stats-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stats-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .stats-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .stats-table .stock-name {
+            font-weight: 600;
+        }
+
+        .stats-table .price {
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .stats-table .positive {
+            color: #2ecc71;
+        }
+
+        .stats-table .negative {
+            color: #ff6b6b;
+        }
+
+        .stats-table .neutral {
+            color: #888;
+        }
+
+        .normalize-options {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .radio-group input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .radio-group label {
+            cursor: pointer;
+            color: #ccc;
+            transition: color 0.2s;
+        }
+
+        .radio-group:hover label {
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .stock-input-section {
+                flex-direction: column;
+            }
+
+            .input-group {
+                width: 100%;
+            }
+
+            input[type="text"],
+            input[type="date"] {
+                flex: 1;
+            }
+
+            .chart-wrapper {
+                height: 350px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .stats-table {
+                font-size: 11px;
+            }
+
+            .stats-table th,
+            .stats-table td {
+                padding: 8px 6px;
+            }
+
+            .normalize-options {
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 Stock Price History</h1>
+            <p class="subtitle">Compare historical stock prices with interactive charts</p>
+        </header>
+
+        <div class="controls-panel">
+            <div class="stock-input-section">
+                <div class="input-group">
+                    <label for="symbolInput">Symbol:</label>
+                    <input type="text" id="symbolInput" placeholder="AAPL" maxlength="10">
+                    <span id="validationFeedback" class="validation-feedback"></span>
+                </div>
+                <div class="date-range">
+                    <label for="fromDate">From:</label>
+                    <input type="date" id="fromDate">
+                    <span>to</span>
+                    <label for="toDate"></label>
+                    <input type="date" id="toDate">
+                </div>
+                <button class="btn-primary" id="addStockBtn">Add Stock</button>
+            </div>
+
+            <div class="selected-stocks" id="selectedStocks"></div>
+
+            <div class="options-row">
+                <div class="normalize-options">
+                    <div class="radio-group">
+                        <input type="radio" name="normalizeMode" id="normNone" value="none" checked>
+                        <label for="normNone">Actual Price</label>
+                    </div>
+                    <div class="radio-group">
+                        <input type="radio" name="normalizeMode" id="normPercent" value="percent">
+                        <label for="normPercent">% Change from Start</label>
+                    </div>
+                    <div class="radio-group">
+                        <input type="radio" name="normalizeMode" id="normRange" value="range">
+                        <label for="normRange">Normalize 0-100%</label>
+                    </div>
+                </div>
+                <button class="btn-secondary" id="clearAllBtn">Clear All</button>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <div id="statsPanel" class="stats-panel">
+            <div class="stats-title">📊 Stock Performance Summary</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Stock</th>
+                        <th>Current</th>
+                        <th>Start</th>
+                        <th>Highest</th>
+                        <th>Lowest</th>
+                        <th>vs Start</th>
+                        <th>vs Highest</th>
+                        <th>vs Lowest</th>
+                    </tr>
+                </thead>
+                <tbody id="statsBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-wrapper">
+                <canvas id="stockChart"></canvas>
+                <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart colors
+        const CHART_COLORS = [
+            '#00d4ff', // Cyan
+            '#ff6b9d', // Pink
+            '#c39eff', // Purple
+            '#ffd93d', // Yellow
+            '#6bcb77', // Green
+            '#ff8c42', // Orange
+            '#a8e6cf', // Mint
+            '#fdcb6e', // Gold
+            '#74b9ff', // Light Blue
+            '#fd79a8', // Hot Pink
+        ];
+
+        // State
+        let stocks = [];
+        let chart = null;
+        let stockData = {};
+
+        // DOM Elements
+        const symbolInput = document.getElementById('symbolInput');
+        const fromDate = document.getElementById('fromDate');
+        const toDate = document.getElementById('toDate');
+        const addStockBtn = document.getElementById('addStockBtn');
+        const selectedStocksEl = document.getElementById('selectedStocks');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const errorMessageEl = document.getElementById('errorMessage');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const validationFeedback = document.getElementById('validationFeedback');
+        const statsPanel = document.getElementById('statsPanel');
+        const statsBody = document.getElementById('statsBody');
+        const normNone = document.getElementById('normNone');
+        const normPercent = document.getElementById('normPercent');
+        const normRange = document.getElementById('normRange');
+
+        // Get current normalization mode
+        function getNormalizeMode() {
+            if (normPercent.checked) return 'percent';
+            if (normRange.checked) return 'range';
+            return 'none';
+        }
+
+        // Initialize date inputs with defaults (1 year range)
+        function initializeDates() {
+            const today = new Date();
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(today.getFullYear() - 1);
+
+            toDate.value = formatDateForInput(today);
+            fromDate.value = formatDateForInput(oneYearAgo);
+        }
+
+        function formatDateForInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // Show error message
+        function showError(message) {
+            errorMessageEl.textContent = message;
+            errorMessageEl.classList.add('show');
+            setTimeout(() => {
+                errorMessageEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // Show/hide loading
+        function setLoading(loading) {
+            loadingOverlay.style.display = loading ? 'flex' : 'none';
+        }
+
+        // Validate symbol
+        let validationTimeout;
+        symbolInput.addEventListener('input', () => {
+            clearTimeout(validationTimeout);
+            validationFeedback.textContent = '';
+            validationFeedback.className = 'validation-feedback';
+
+            if (symbolInput.value.length >= 1) {
+                validationTimeout = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`/api/validate-symbol?symbol=${symbolInput.value.toUpperCase()}`);
+                        const data = await response.json();
+                        
+                        if (data.valid) {
+                            validationFeedback.textContent = '✓';
+                            validationFeedback.className = 'validation-feedback valid';
+                            addStockBtn.disabled = false;
+                        } else {
+                            validationFeedback.textContent = '✗ Not found';
+                            validationFeedback.className = 'validation-feedback invalid';
+                            addStockBtn.disabled = true;
+                        }
+                    } catch (error) {
+                        validationFeedback.textContent = '';
+                        addStockBtn.disabled = false;
+                    }
+                }, 500);
+            } else {
+                addStockBtn.disabled = false;
+            }
+        });
+
+        // Add stock
+        addStockBtn.addEventListener('click', async () => {
+            const symbol = symbolInput.value.toUpperCase().trim();
+            
+            if (!symbol) {
+                showError('Please enter a stock symbol');
+                return;
+            }
+
+            if (stocks.includes(symbol)) {
+                showError(`${symbol} is already added`);
+                return;
+            }
+
+            if (stocks.length >= 10) {
+                showError('Maximum 10 stocks allowed');
+                return;
+            }
+
+            await fetchAndAddStock(symbol);
+        });
+
+        async function fetchAndAddStock(symbol) {
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`/api/stock-history?symbol=${symbol}&from=${fromDate.value}&to=${toDate.value}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to fetch stock data');
+                }
+
+                const data = await response.json();
+                
+                if (data.prices.filter(p => p !== null).length === 0) {
+                    throw new Error('No data available for this symbol and date range');
+                }
+
+                stockData[symbol] = data;
+                stocks.push(symbol);
+                
+                symbolInput.value = '';
+                validationFeedback.textContent = '';
+                addStockBtn.disabled = false;
+
+                updateSelectedStocks();
+                updateChart();
+                updateStatsPanel();
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Update selected stocks display
+        function updateSelectedStocks() {
+            selectedStocksEl.innerHTML = stocks.map((symbol, index) => `
+                <div class="stock-chip" style="background: ${CHART_COLORS[index % CHART_COLORS.length]}20; border: 1px solid ${CHART_COLORS[index % CHART_COLORS.length]}; color: ${CHART_COLORS[index % CHART_COLORS.length]}">
+                    <span>${symbol}</span>
+                    <button onclick="removeStock('${symbol}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Remove stock
+        window.removeStock = function(symbol) {
+            stocks = stocks.filter(s => s !== symbol);
+            delete stockData[symbol];
+            updateSelectedStocks();
+            updateChart();
+            updateStatsPanel();
+        };
+
+        // Clear all stocks
+        clearAllBtn.addEventListener('click', () => {
+            stocks = [];
+            stockData = {};
+            updateSelectedStocks();
+            updateChart();
+            updateStatsPanel();
+        });
+
+        // Calculate statistics for a stock
+        function calculateStats(symbol) {
+            const data = stockData[symbol];
+            const prices = data.prices.filter(p => p !== null);
+            
+            if (prices.length === 0) return null;
+
+            const validPrices = data.prices.map((p, i) => p !== null ? { price: p, ts: data.timestamps[i] } : null).filter(p => p !== null);
+            validPrices.sort((a, b) => a.ts - b.ts);
+            
+            const startPrice = validPrices[0].price;
+            const currentPrice = validPrices[validPrices.length - 1].price;
+            const highestPrice = Math.max(...prices);
+            const lowestPrice = Math.min(...prices);
+
+            return {
+                start: startPrice,
+                current: currentPrice,
+                highest: highestPrice,
+                lowest: lowestPrice,
+                vsStart: ((currentPrice - startPrice) / startPrice) * 100,
+                vsHighest: ((currentPrice - highestPrice) / highestPrice) * 100,
+                vsLowest: ((currentPrice - lowestPrice) / lowestPrice) * 100
+            };
+        }
+
+        // Format percentage with sign and color class
+        function formatPercent(value) {
+            const sign = value >= 0 ? '+' : '';
+            const className = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
+            return `<span class="${className}">${sign}${value.toFixed(2)}%</span>`;
+        }
+
+        // Update statistics panel
+        function updateStatsPanel() {
+            if (stocks.length === 0) {
+                statsPanel.classList.remove('show');
+                return;
+            }
+
+            statsPanel.classList.add('show');
+            
+            statsBody.innerHTML = stocks.map((symbol, index) => {
+                const stats = calculateStats(symbol);
+                const color = CHART_COLORS[index % CHART_COLORS.length];
+                
+                return `
+                    <tr>
+                        <td class="stock-name" style="color: ${color}">${symbol}</td>
+                        <td class="price">$${stats.current.toFixed(2)}</td>
+                        <td class="price">$${stats.start.toFixed(2)}</td>
+                        <td class="price">$${stats.highest.toFixed(2)}</td>
+                        <td class="price">$${stats.lowest.toFixed(2)}</td>
+                        <td class="price">${formatPercent(stats.vsStart)}</td>
+                        <td class="price">${formatPercent(stats.vsHighest)}</td>
+                        <td class="price">${formatPercent(stats.vsLowest)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Update chart
+        function updateChart() {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            const normalizeMode = getNormalizeMode();
+
+            if (stocks.length === 0) {
+                if (chart) {
+                    chart.destroy();
+                    chart = null;
+                }
+                return;
+            }
+
+            // Get all unique timestamps
+            const allTimestamps = new Set();
+            stocks.forEach(symbol => {
+                if (stockData[symbol] && stockData[symbol].timestamps) {
+                    stockData[symbol].timestamps.forEach(ts => allTimestamps.add(ts));
+                }
+            });
+
+            const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+
+            // Build datasets
+            const datasets = stocks.map((symbol, index) => {
+                const data = stockData[symbol];
+                const color = CHART_COLORS[index % CHART_COLORS.length];
+
+                // Create a map of timestamp -> price for this stock
+                const priceMap = {};
+                data.timestamps.forEach((ts, i) => {
+                    priceMap[ts] = data.prices[i];
+                });
+
+                // Generate chart data points
+                let chartData = sortedTimestamps.map(ts => {
+                    const price = priceMap[ts];
+                    return price !== null && price !== undefined ? price : null;
+                });
+
+                // Normalize data based on mode
+                if (normalizeMode === 'percent') {
+                    const firstPrice = chartData.find(p => p !== null);
+                    if (firstPrice) {
+                        chartData = chartData.map(p => p !== null ? ((p - firstPrice) / firstPrice) * 100 : null);
+                    }
+                } else if (normalizeMode === 'range') {
+                    const validPrices = chartData.filter(p => p !== null);
+                    if (validPrices.length > 0) {
+                        const minPrice = Math.min(...validPrices);
+                        const maxPrice = Math.max(...validPrices);
+                        const range = maxPrice - minPrice;
+                        if (range > 0) {
+                            chartData = chartData.map(p => p !== null ? ((p - minPrice) / range) * 100 : null);
+                        }
+                    }
+                }
+
+                return {
+                    label: symbol,
+                    data: chartData,
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    tension: 0.1,
+                    fill: false,
+                    spanGaps: true
+                };
+            });
+
+            // Create or update chart
+            if (chart) {
+                chart.data.labels = sortedTimestamps.map(ts => new Date(ts * 1000));
+                chart.data.datasets = datasets;
+                chart.update();
+            } else {
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: sortedTimestamps.map(ts => new Date(ts * 1000)),
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: '#e0e0e0',
+                                    usePointStyle: true,
+                                    padding: 20
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.parsed.y;
+                                        if (normalizeMode === 'percent') {
+                                            return `${context.dataset.label}: ${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                        } else if (normalizeMode === 'range') {
+                                            return `${context.dataset.label}: ${value.toFixed(2)}%`;
+                                        }
+                                        return `${context.dataset.label}: $${value.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    displayFormats: {
+                                        day: 'MMM d',
+                                        week: 'MMM d',
+                                        month: 'MMM yyyy',
+                                        year: 'yyyy'
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#888'
+                                }
+                            },
+                            y: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#888',
+                                    callback: function(value) {
+                                        if (normalizeMode === 'percent' || normalizeMode === 'range') {
+                                            return value.toFixed(0) + '%';
+                                        }
+                                        return '$' + value.toFixed(0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Re-fetch all stocks when date range changes
+        async function refreshAllStocks() {
+            if (stocks.length === 0) return;
+
+            setLoading(true);
+            const failedStocks = [];
+
+            for (const symbol of [...stocks]) {
+                try {
+                    const response = await fetch(`/api/stock-history?symbol=${symbol}&from=${fromDate.value}&to=${toDate.value}`);
+                    
+                    if (!response.ok) {
+                        failedStocks.push(symbol);
+                        continue;
+                    }
+
+                    const data = await response.json();
+                    stockData[symbol] = data;
+                } catch (error) {
+                    failedStocks.push(symbol);
+                }
+            }
+
+            if (failedStocks.length > 0) {
+                showError(`Failed to fetch data for: ${failedStocks.join(', ')}`);
+                // Remove failed stocks
+                failedStocks.forEach(symbol => {
+                    delete stockData[symbol];
+                    stocks = stocks.filter(s => s !== symbol);
+                });
+                updateSelectedStocks();
+            }
+
+            updateChart();
+            updateStatsPanel();
+            setLoading(false);
+        }
+
+        // Event listeners for date changes
+        fromDate.addEventListener('change', () => {
+            if (stocks.length > 0) refreshAllStocks();
+        });
+
+        toDate.addEventListener('change', () => {
+            if (stocks.length > 0) refreshAllStocks();
+        });
+
+        // Normalize radio buttons
+        normNone.addEventListener('change', updateChart);
+        normPercent.addEventListener('change', updateChart);
+        normRange.addEventListener('change', updateChart);
+
+        // Enter key to add stock
+        symbolInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addStockBtn.click();
+            }
+        });
+
+        // Initialize
+        initializeDates();
+    </script>
+</body>
+</html>
