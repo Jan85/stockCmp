@@ -494,7 +494,7 @@
                     </div>
                     <div class="radio-group">
                         <input type="radio" name="normalizeMode" id="normRange" value="range">
-                        <label for="normRange">Normalize 0-100%</label>
+                        <label for="normRange">Normalize 0.0-1.0</label>
                     </div>
                 </div>
                 <button class="btn-secondary" id="clearAllBtn">Clear All</button>
@@ -834,7 +834,7 @@
                         const maxPrice = Math.max(...validPrices);
                         const range = maxPrice - minPrice;
                         if (range > 0) {
-                            chartData = chartData.map(p => p !== null ? ((p - minPrice) / range) * 100 : null);
+                            chartData = chartData.map(p => p !== null ? (p - minPrice) / range : null);
                         }
                     }
                 }
@@ -893,7 +893,7 @@
                                         if (normalizeMode === 'percent') {
                                             return `${context.dataset.label}: ${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
                                         } else if (normalizeMode === 'range') {
-                                            return `${context.dataset.label}: ${value.toFixed(2)}%`;
+                                            return `${context.dataset.label}: ${value.toFixed(3)}`;
                                         }
                                         return `${context.dataset.label}: $${value.toFixed(2)}`;
                                     }
@@ -925,8 +925,10 @@
                                 ticks: {
                                     color: '#888',
                                     callback: function(value) {
-                                        if (normalizeMode === 'percent' || normalizeMode === 'range') {
+                                        if (normalizeMode === 'percent') {
                                             return value.toFixed(0) + '%';
+                                        } else if (normalizeMode === 'range') {
+                                            return value.toFixed(1);
                                         }
                                         return '$' + value.toFixed(0);
                                     }
