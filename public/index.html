@@ -494,10 +494,15 @@
                     </div>
                     <div class="radio-group">
                         <input type="radio" name="normalizeMode" id="normRange" value="range">
-                        <label for="normRange">Normalize 0.0-1.0</label>
+                        <label for="normRange">Normalize 0-100%</label>
                     </div>
                 </div>
                 <button class="btn-secondary" id="clearAllBtn">Clear All</button>
+                <button class="btn-secondary" id="exportBtn" title="Export symbols to file">Export</button>
+                <label class="btn-secondary" style="cursor: pointer; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: transform 0.2s, box-shadow 0.2s; display: inline-block;">
+                    Import
+                    <input type="file" id="importFile" accept=".txt,.csv" style="display: none;">
+                </label>
             </div>
         </div>
 
@@ -568,6 +573,8 @@
         const normNone = document.getElementById('normNone');
         const normPercent = document.getElementById('normPercent');
         const normRange = document.getElementById('normRange');
+        const exportBtn = document.getElementById('exportBtn');
+        const importFile = document.getElementById('importFile');
 
         // Get current normalization mode
         function getNormalizeMode() {
@@ -834,7 +841,7 @@
                         const maxPrice = Math.max(...validPrices);
                         const range = maxPrice - minPrice;
                         if (range > 0) {
-                            chartData = chartData.map(p => p !== null ? (p - minPrice) / range : null);
+                            chartData = chartData.map(p => p !== null ? ((p - minPrice) / range) * 100 : null);
                         }
                     }
                 }
@@ -890,10 +897,8 @@
                                 callbacks: {
                                     label: function(context) {
                                         const value = context.parsed.y;
-                                        if (normalizeMode === 'percent') {
+                                        if (normalizeMode === 'percent' || normalizeMode === 'range') {
                                             return `${context.dataset.label}: ${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-                                        } else if (normalizeMode === 'range') {
-                                            return `${context.dataset.label}: ${value.toFixed(3)}`;
                                         }
                                         return `${context.dataset.label}: $${value.toFixed(2)}`;
                                     }
@@ -925,10 +930,8 @@
                                 ticks: {
                                     color: '#888',
                                     callback: function(value) {
-                                        if (normalizeMode === 'percent') {
+                                        if (normalizeMode === 'percent' || normalizeMode === 'range') {
                                             return value.toFixed(0) + '%';
-                                        } else if (normalizeMode === 'range') {
-                                            return value.toFixed(1);
                                         }
                                         return '$' + value.toFixed(0);
                                     }
@@ -997,6 +1000,54 @@
             if (e.key === 'Enter') {
                 addStockBtn.click();
             }
+        });
+
+        // Export symbols to file
+        exportBtn.addEventListener('click', () => {
+            if (stocks.length === 0) {
+                showError('No stocks to export');
+                return;
+            }
+            const content = stocks.join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'stock-symbols.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Import symbols from file
+        importFile.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const symbols = event.target.result
+                    .split(/[\n,]+/)
+                    .map(s => s.trim().toUpperCase())
+                    .filter(s => s.length > 0);
+
+                // Clear existing stocks first
+                stocks = [];
+                stockData = {};
+                updateSelectedStocks();
+                updateChart();
+                updateStatsPanel();
+
+                // Add imported symbols
+                for (const symbol of symbols) {
+                    if (!stocks.includes(symbol) && stocks.length < 10) {
+                        await fetchAndAddStock(symbol);
+                    }
+                }
+            };
+            reader.readAsText(file);
+            importFile.value = ''; // Reset input
         });
 
         // Initialize

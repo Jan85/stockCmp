@@ -47,3 +47,4 @@ Navigate to: http://localhost:3000
 - **Frontend**: HTML, CSS, JavaScript, Chart.js
 - **Backend**: Node.js, Express
 - **Data Source**: Yahoo Finance API
+
