@@ -47,4 +47,18 @@ Navigate to: http://localhost:3000
 - **Frontend**: HTML, CSS, JavaScript, Chart.js
 - **Backend**: Node.js, Express
 - **Data Source**: Yahoo Finance API
+- **AI**: OpenAI GPT-3.5 (optional, for AI summaries)
+
+## AI Summary Feature
+
+To enable AI-powered stock analysis summaries:
+
+1. Set your OpenAI API key as an environment variable:
+   ```bash
+   OPENAI_API_KEY=your_api_key_here npm start
+   ```
+
+2. Click the "🤖 AI Summary" button after adding stocks
+3. The AI will generate a brief comparison of your selected stocks
+4. Cost is minimal (~$0.001 per summary using GPT-3.5-turbo)
 
