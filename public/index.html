@@ -396,6 +396,96 @@
             flex-wrap: wrap;
         }
 
+        .ai-summary-btn {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        }
+
+        .ai-summary-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        .ai-summary-panel {
+            background: rgba(155, 89, 182, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(155, 89, 182, 0.3);
+            display: none;
+        }
+
+        .ai-summary-panel.show {
+            display: block;
+        }
+
+        .ai-summary-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #9b59b6;
+        }
+
+        .ai-summary-content {
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .ai-cost {
+            font-size: 11px;
+            color: #888;
+            margin-top: 8px;
+        }
+
+        .indicator-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin: 2px;
+        }
+
+        .indicator-trend {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+
+        .indicator-trend.bearish {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+
+        .indicator-trend.neutral {
+            background: rgba(149, 165, 166, 0.2);
+            color: #95a5a6;
+        }
+
+        .indicator-volatility {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+        }
+
+        .indicator-volatility.high {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+
+        .indicator-volatility.low {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+
+        .indicator-position {
+            background: rgba(241, 196, 15, 0.2);
+            color: #f1c40f;
+        }
+
+        .indicator-signal {
+            background: rgba(155, 89, 182, 0.2);
+            color: #9b59b6;
+            font-size: 10px;
+        }
+
         .radio-group {
             display: flex;
             align-items: center;
@@ -503,6 +593,7 @@
                     Import
                     <input type="file" id="importFile" accept=".txt,.csv" style="display: none;">
                 </label>
+                <button class="btn-secondary ai-summary-btn" id="aiSummaryBtn" title="Generate AI summary">🤖 AI Summary</button>
             </div>
         </div>
 
@@ -521,11 +612,23 @@
                         <th>vs Start</th>
                         <th>vs Highest</th>
                         <th>vs Lowest</th>
+                        <th>Analysis</th>
                     </tr>
                 </thead>
                 <tbody id="statsBody">
                 </tbody>
             </table>
+        </div>
+
+        <div id="indicatorsPanel" class="stats-panel">
+            <div class="stats-title">📈 Technical Indicators</div>
+            <div id="indicatorsContent"></div>
+        </div>
+
+        <div id="aiSummaryPanel" class="ai-summary-panel">
+            <div class="ai-summary-title">🤖 AI Summary</div>
+            <div id="aiSummaryContent" class="ai-summary-content"></div>
+            <div id="aiCost" class="ai-cost"></div>
         </div>
 
         <div class="chart-container">
@@ -575,6 +678,12 @@
         const normRange = document.getElementById('normRange');
         const exportBtn = document.getElementById('exportBtn');
         const importFile = document.getElementById('importFile');
+        const aiSummaryBtn = document.getElementById('aiSummaryBtn');
+        const indicatorsPanel = document.getElementById('indicatorsPanel');
+        const indicatorsContent = document.getElementById('indicatorsContent');
+        const aiSummaryPanel = document.getElementById('aiSummaryPanel');
+        const aiSummaryContent = document.getElementById('aiSummaryContent');
+        const aiCost = document.getElementById('aiCost');
 
         // Get current normalization mode
         function getNormalizeMode() {
@@ -1048,6 +1157,120 @@
             };
             reader.readAsText(file);
             importFile.value = ''; // Reset input
+        });
+
+        // Calculate and update technical indicators
+        async function updateIndicators() {
+            if (stocks.length === 0) {
+                indicatorsPanel.classList.remove('show');
+                return;
+            }
+
+            indicatorsPanel.classList.add('show');
+            indicatorsContent.innerHTML = '<p style="color: #888;">Calculating indicators...</p>';
+
+            const results = await Promise.all(stocks.map(async (symbol) => {
+                try {
+                    const response = await fetch('/api/calculate-indicators', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            timestamps: stockData[symbol].timestamps,
+                            prices: stockData[symbol].prices
+                        })
+                    });
+                    const data = await response.json();
+                    return { symbol, indicators: data.indicators };
+                } catch (error) {
+                    return { symbol, indicators: null, error: error.message };
+                }
+            }));
+
+            indicatorsContent.innerHTML = results.map((r, index) => {
+                const color = CHART_COLORS[index % CHART_COLORS.length];
+                if (!r.indicators) {
+                    return `<div style="margin-bottom: 12px; color: ${color}">${r.symbol}: Error calculating indicators</div>`;
+                }
+                const { trend, volatilityLevel, signals, positionLabel, position, ma20, ma50, ma200 } = r.indicators;
+                const trendClass = trend === 'bearish' ? 'bearish' : trend === 'bullish' ? '' : 'neutral';
+                const volClass = volatilityLevel === 'high' ? 'high' : volatilityLevel === 'low' ? 'low' : '';
+                
+                return `
+                    <div style="margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                        <div style="color: ${color}; font-weight: 600; margin-bottom: 8px;">${r.symbol}</div>
+                        <div>
+                            <span class="indicator-badge indicator-trend ${trendClass}">${trend.toUpperCase()}</span>
+                            <span class="indicator-badge indicator-volatility ${volClass}">Vol: ${volatilityLevel}</span>
+                            <span class="indicator-badge indicator-position">${positionLabel} (${position}%)</span>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            ${signals.map(s => `<span class="indicator-badge indicator-signal">${s}</span>`).join('')}
+                        </div>
+                        <div style="margin-top: 8px; font-size: 11px; color: #888;">
+                            MA20: $${ma20 || 'N/A'} | MA50: $${ma50 || 'N/A'} ${ma200 ? `| MA200: $${ma200}` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Generate AI summary
+        aiSummaryBtn.addEventListener('click', async () => {
+            if (stocks.length === 0) {
+                showError('Add some stocks first');
+                return;
+            }
+
+            aiSummaryBtn.disabled = true;
+            aiSummaryPanel.classList.add('show');
+            aiSummaryContent.innerHTML = '<p>Generating summary...</p>';
+            aiCost.textContent = '';
+
+            try {
+                // First get indicators for all stocks
+                const stocksWithIndicators = await Promise.all(stocks.map(async (symbol) => {
+                    const response = await fetch('/api/calculate-indicators', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            timestamps: stockData[symbol].timestamps,
+                            prices: stockData[symbol].prices
+                        })
+                    });
+                    const data = await response.json();
+                    return {
+                        symbol,
+                        stats: calculateStats(symbol),
+                        indicators: data.indicators
+                    };
+                }));
+
+                const response = await fetch('/api/ai-summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stocks: stocksWithIndicators })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    if (data.error.includes('API key')) {
+                        aiSummaryContent.innerHTML = `<p style="color: #e74c3c;">${data.error}</p>
+                            <p style="color: #888; font-size: 12px; margin-top: 8px;">Run: <code>OPENAI_API_KEY=your_key npm start</code></p>`;
+                    } else {
+                        aiSummaryContent.innerHTML = `<p style="color: #e74c3c;">Error: ${data.error}</p>`;
+                    }
+                } else {
+                    aiSummaryContent.innerHTML = data.summary.replace(/\n/g, '<br>');
+                    if (data.usage) {
+                        aiCost.textContent = `Tokens: ${data.usage.promptTokens + data.usage.completionTokens} | Estimated cost: $${data.usage.estimatedCost?.toFixed(4) || '0.00'}`;
+                    }
+                }
+            } catch (error) {
+                aiSummaryContent.innerHTML = `<p style="color: #e74c3c;">Error: ${error.message}</p>`;
+            } finally {
+                aiSummaryBtn.disabled = false;
+            }
         });
 
         // Initialize
