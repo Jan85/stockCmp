@@ -612,7 +612,6 @@
                         <th>vs Start</th>
                         <th>vs Highest</th>
                         <th>vs Lowest</th>
-                        <th>Analysis</th>
                     </tr>
                 </thead>
                 <tbody id="statsBody">
@@ -801,6 +800,7 @@
                 updateSelectedStocks();
                 updateChart();
                 updateStatsPanel();
+                updateIndicators();
             } catch (error) {
                 showError(error.message);
             } finally {
@@ -825,6 +825,7 @@
             updateSelectedStocks();
             updateChart();
             updateStatsPanel();
+            updateIndicators();
         };
 
         // Clear all stocks
@@ -834,6 +835,7 @@
             updateSelectedStocks();
             updateChart();
             updateStatsPanel();
+            updateIndicators();
         });
 
         // Calculate statistics for a stock
@@ -1087,6 +1089,7 @@
 
             updateChart();
             updateStatsPanel();
+            updateIndicators();
             setLoading(false);
         }
 
