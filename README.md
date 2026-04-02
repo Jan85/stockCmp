@@ -14,6 +14,18 @@ Compare historical stock prices with interactive charts. Add multiple stocks, ch
 
 ## How to Run
 
+### Setup API Key (for AI summaries)
+
+1. Copy the example env file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and add your OpenAI API key:
+   ```
+   OPENAI_API_KEY=sk-your-key-here
+   ```
+
 ### Install dependencies
 
 ```bash
@@ -61,4 +73,3 @@ To enable AI-powered stock analysis summaries:
 2. Click the "🤖 AI Summary" button after adding stocks
 3. The AI will generate a brief comparison of your selected stocks
 4. Cost is minimal (~$0.001 per summary using GPT-3.5-turbo)
-
